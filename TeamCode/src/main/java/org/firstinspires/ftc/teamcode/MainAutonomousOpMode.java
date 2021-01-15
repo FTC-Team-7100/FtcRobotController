@@ -29,9 +29,13 @@
 
 package org.firstinspires.ftc.teamcode;
 
+import android.os.Build;
+
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
+import com.qualcomm.robotcore.hardware.DcMotorSimple;
+import com.qualcomm.robotcore.hardware.Servo;
 
 import org.firstinspires.ftc.robotcore.external.ClassFactory;
 import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
@@ -43,6 +47,8 @@ import org.firstinspires.ftc.robotcore.external.navigation.VuforiaTrackable;
 import org.firstinspires.ftc.robotcore.external.navigation.VuforiaTrackableDefaultListener;
 import org.firstinspires.ftc.robotcore.external.navigation.VuforiaTrackables;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -54,18 +60,19 @@ import static org.firstinspires.ftc.robotcore.external.navigation.VuforiaLocaliz
 
 @TeleOp(name="Main Autonomous OpMode")
 public class MainAutonomousOpMode extends LinearOpMode {
-    List<VuforiaTrackable> allTrackables = new ArrayList<VuforiaTrackable>();
+    private List<VuforiaTrackable> allTrackables = new ArrayList<VuforiaTrackable>();
     private VuforiaLocalizer.Parameters cameraParameters = null;
     private static final VuforiaLocalizer.CameraDirection CAMERA_CHOICE = BACK;
     private static final boolean PHONE_IS_PORTRAIT = false;
     private static final int CYCLE_MS = 50;
+    private LocalDateTime stopTime = LocalDateTime.MIN;
     DcMotor motorLF;
     DcMotor motorLB;
     DcMotor motorRF;
     DcMotor motorRB;
     private static final String VUFORIA_KEY = "AX3wJCr/////AAABmXqqKIuTJkMatbvyrDkSphp5h9VYO42DWDiKLucp30xEvP98y9OIRKGNszB+EpBJ4cPqww5PWGd6BPOl7kHDKajvlJClovU1+L4gNxeM0pvROvjulRueLD7JCqzM7yWina4gLO1YTeWIUGqF1v1Qh34137m65frOnjbPcBgQk2O4ky740K3T/SM541xP4ALr3FSvyl2xQD1EBu2xI49XL2bLtsztTuUUUmyS07lvmYNt4kH1+108Bqvca+GYnufjYs8mlDG4qYSF6UhZyGHhjskblJWKaNQT2Lph3JgxMXfcaV40/qkq9C52GVbIk/QLEDRnKq3Ezce13ZM+GK+YItEAYXJ+hUZHTUIbVedF8uZ4";
-    private static final float mmPerInch        = 25.4f;
-    private static final float mmTargetHeight   = (6) * mmPerInch;
+    private static final float mmPerInch = 25.4f;
+    private static final float mmTargetHeight = (6) * mmPerInch;
     private static final float halfField = 72 * mmPerInch;
     private static final float quadField  = 36 * mmPerInch;
     private VuforiaLocalizer vuforia = null;
@@ -100,6 +107,7 @@ public class MainAutonomousOpMode extends LinearOpMode {
     }
     private void mainLoop() {
         updateLocations();
+        moveRobot();
         finalizeLoopStage();
     }
     private void initializeProgram() {
@@ -107,6 +115,14 @@ public class MainAutonomousOpMode extends LinearOpMode {
         initializeTargets();
         initializeMotors();
         beginMainProgram();
+    }
+    private void moveRobot() {
+        if(LocalDateTime.now().isAfter(stopTime)) {
+            planMotion();
+        }
+    }
+    private void planMotion() {
+        stopTime = LocalDateTime.now();
     }
     private boolean shouldContinue() {
         return !isStopRequested() && opModeIsActive();
@@ -148,6 +164,64 @@ public class MainAutonomousOpMode extends LinearOpMode {
         motorLB = hardwareMap.get(DcMotor.class, "lb_drive");
         motorRF = hardwareMap.get(DcMotor.class, "rf_drive");
         motorRB = hardwareMap.get(DcMotor.class, "rb_drive");
+    }
+    private DcMotor[] getMotors(int frontBack, int rightLeft)
+    {
+        DcMotor[][][] returnArray = new DcMotor[][][] {
+                new DcMotor[][] {
+                        new DcMotor[] {
+                                motorLB
+                        },
+                        new DcMotor[] {
+                                motorRB, motorLB
+                        },
+                        new DcMotor[] {
+                                motorRB
+                        }
+                },
+                new DcMotor[][] {
+                        new DcMotor[] {
+                                motorLF, motorLB
+                        },
+                        new DcMotor[] {
+                                motorRF, motorLF, motorRB, motorLB
+                        },
+                        new DcMotor[] {
+                                motorRF, motorRB
+                        }
+                },
+                new DcMotor[][] {
+                        new DcMotor[] {
+                                motorLF
+                        },
+                        new DcMotor[] {
+                                motorRF, motorLF
+                        },
+                        new DcMotor[] {
+                                motorRF
+                        }
+                }
+        };
+        return returnArray[frontBack + 1][rightLeft + 1];
+    }
+    private void setMotors(int frontBack, int rightLeft, double amount) {
+        boolean isPositive = amount >= 0;
+        DcMotorSimple.Direction direction = DcMotorSimple.Direction.FORWARD;
+        if(!isPositive) direction = DcMotorSimple.Direction.REVERSE;
+        double correctedAmount = Math.abs(amount);
+        DcMotor[] motors = getMotors(frontBack, rightLeft);
+        for(DcMotor motor : motors) {
+            motor.setDirection(direction);
+            motor.setPower(correctedAmount);
+        }
+    }
+    private void beginLinearMotion(double power) {
+        setMotors(0, 0, power);
+    }
+    private void beginRotation(double power)
+    {
+        setMotors(0, 1, power);
+        setMotors(0, -1, -power);
     }
     private void getCameraLocation() {
         float phoneYRotate = 0;
