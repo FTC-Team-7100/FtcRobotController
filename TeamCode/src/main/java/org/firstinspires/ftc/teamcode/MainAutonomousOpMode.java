@@ -75,6 +75,8 @@ public class MainAutonomousOpMode extends LinearOpMode {
     private static final float mmTargetHeight = (6) * mmPerInch;
     private static final float halfField = 72 * mmPerInch;
     private static final float quadField  = 36 * mmPerInch;
+    private static final float linearSpeedPerPower = 1.0f;
+    private static final float rotationSpeedPerPower = 1.0f;
     private VuforiaLocalizer vuforia = null;
     private static final float[][] trackableTransforms = {
             { halfField, quadField, mmTargetHeight, 90, 0, -90 },
@@ -122,7 +124,7 @@ public class MainAutonomousOpMode extends LinearOpMode {
         }
     }
     private void planMotion() {
-        stopTime = LocalDateTime.now();
+        moveLinear(1);
     }
     private boolean shouldContinue() {
         return !isStopRequested() && opModeIsActive();
@@ -218,10 +220,44 @@ public class MainAutonomousOpMode extends LinearOpMode {
     private void beginLinearMotion(double power) {
         setMotors(0, 0, power);
     }
-    private void beginRotation(double power)
-    {
+    private void beginRotation(double power) {
         setMotors(0, 1, power);
         setMotors(0, -1, -power);
+    }
+    private void stopRobot()
+    {
+        stopTime = LocalDateTime.now();
+        setMotors(0, 0, 0);
+    }
+    private void moveLinearInternal(double power, double millimeters) {
+        beginLinearMotion(power);
+        setStopTime(power, millimeters, linearSpeedPerPower);
+    }
+    private void rotateInternal(double power, double radians) {
+        beginRotation(power);
+        setStopTime(power, radians, rotationSpeedPerPower);
+    }
+    private void moveLinear(double millimeters) {
+        if(!stopIfZero(millimeters)) moveLinearInternal(getPowerFromDistance(millimeters), millimeters);
+    }
+    private void rotate(double radians) {
+        if(!stopIfZero(radians)) rotateInternal(getPowerFromDistance(radians), radians);
+    }
+    private boolean stopIfZero(double distance) {
+        if(distance == 0.0) {
+            stopRobot();
+            return true;
+        }
+        return false;
+    }
+    private double getPowerFromDistance(double distance) {
+        double power = 1;
+        if(distance < 0) power = -1;
+        return power;
+    }
+    private void setStopTime(double power, double distance, double speedPerPower) {
+        double seconds = Math.abs(distance / (speedPerPower * power));
+        stopTime = LocalDateTime.now().plusNanos((long)(seconds * 1000000000.0));
     }
     private void getCameraLocation() {
         float phoneYRotate = 0;
