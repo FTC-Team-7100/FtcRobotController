@@ -50,7 +50,9 @@ import org.firstinspires.ftc.robotcore.external.navigation.VuforiaTrackables;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+import java.util.PriorityQueue;
 
 import static org.firstinspires.ftc.robotcore.external.navigation.AngleUnit.DEGREES;
 import static org.firstinspires.ftc.robotcore.external.navigation.AxesOrder.XYZ;
@@ -77,6 +79,7 @@ public class MainAutonomousOpMode extends LinearOpMode {
     private static final float quadField  = 36 * mmPerInch;
     private static final float linearSpeedPerPower = 1.0f;
     private static final float rotationSpeedPerPower = 1.0f;
+    private static final float millimetersPerTableRow = 10.0f;
     private VuforiaLocalizer vuforia = null;
     private static final float[][] trackableTransforms = {
             { halfField, quadField, mmTargetHeight, 90, 0, -90 },
@@ -146,6 +149,105 @@ public class MainAutonomousOpMode extends LinearOpMode {
             trackable.setName(trackableNames[i]);
             transform(trackable, trackableTransforms[i]);
         }
+    }
+    private int[] constructDjikstraRoute(int graphSize, int[][] edges, double[][] weights, int start, int end) {
+        double[] distances = new double[graphSize];
+        int[] routeFrom = new int[graphSize];
+        for(int i = 0; i < graphSize; i++) {
+            distances[i] = Double.MAX_VALUE;
+            if(i == start) distances[i] = 0;
+            routeFrom[i] = -1;
+        }
+        PriorityQueue<DjikstraPriorityQueueItem> queue = new PriorityQueue<>(new DjikstraPriorityQueueComparator());
+        queue.add(new DjikstraPriorityQueueItem(start, 0));
+        while(!queue.isEmpty()) {
+            DjikstraPriorityQueueItem queueItem = queue.remove();
+            for(int i = 0; i < edges[queueItem.index].length; i++) {
+                if(queueItem.distance + weights[queueItem.index][i] < distances[edges[queueItem.index][i]]) {
+                    distances[edges[queueItem.index][i]] = queueItem.distance + weights[queueItem.index][i];
+                    queue.add(new DjikstraPriorityQueueItem(edges[queueItem.index][i], distances[edges[queueItem.index][i]]));
+                    routeFrom[edges[queueItem.index][i]] = queueItem.index;
+                }
+            }
+        }
+        if(routeFrom[end] == -1) return new int[0];
+        ArrayList<Integer> output = new ArrayList<>();
+        int currentIndex = end;
+        while(currentIndex != -1) {
+            output.add(currentIndex);
+            currentIndex = routeFrom[currentIndex];
+        }
+        int[] finalOutput = new int[output.size()];
+        for(int i = 0; i < output.size(); i++) {
+            finalOutput[i] = output.get(output.size() - i - 1);
+        }
+        return finalOutput;
+    }
+    private double[][] constructWeightsFromGraph(int[][] input) {
+        int arraySize = input.length;
+        int area = arraySize / 4;
+        int dimension = (int)Math.round(Math.sqrt(area));
+        double[][] output = new double[arraySize][];
+        for(int i = 0; i < arraySize; i++) {
+            int[] graphEdges = input[i];
+            output[i] = new double[graphEdges.length];
+            for(int j = 0; j < graphEdges.length; j++) {
+                if(input[i][j] / 4 == i) {
+                    output[i][j] = (Math.PI / 2) / rotationSpeedPerPower;
+                } else {
+                    output[i][j] = millimetersPerTableRow / linearSpeedPerPower;
+                }
+            }
+        }
+        return output;
+    }
+    private int[][] constructGraphFromTable(boolean[][] input) {
+        int[][] trigTable = new int[][] {
+                new int[] { 1, 0 },
+                new int[] { 0, 1 },
+                new int[] { -1, 0 },
+                new int[] { 0, -1 }
+        };
+        int dimension = input[0].length;
+        int elements = 4 * dimension * dimension;
+        ArrayList<ArrayList<Integer>> tempTable = new ArrayList<>();
+        for(int i = 0; i < elements; i++) {
+            tempTable.add(new ArrayList<Integer>());
+        }
+        for(int i = 0; i < dimension; i++) {
+            for(int j = 0; j < dimension; j++) {
+                for(int k = 0; k < 4; k++) {
+                    int[][] outEdges = new int[][] {
+                            new int[] { i, j, (k + 1) % 4 },
+                            new int[] { i, j, Math.floorMod(k - 1, 4) },
+                            new int[] { i + trigTable[k][0], j + trigTable[k][1], k },
+                            new int[] { i - trigTable[k][0], j - trigTable[k][1], k }
+                    };
+                    for(int[] outEdge : outEdges) {
+                        if(i < 0 || i >= dimension || j < 0 || j > dimension) continue;
+                        int outNode = outEdge[2] + 4 * (outEdge[1] + dimension * outEdge[0]);
+                        tempTable.get(k + 4 * (j + dimension * i)).add(outNode);
+                    }
+                }
+            }
+        }
+        int[][] finalTable = new int[elements][];
+        for(int i = 0; i < elements; i++) {
+            int edgesSize = tempTable.get(i).size();
+            finalTable[i] = new int[edgesSize];
+            for(int j = 0; j < edgesSize; j++) {
+                finalTable[i][j] = tempTable.get(i).get(j);
+            }
+        }
+        return finalTable;
+    }
+    private int[] constructRouteFromTable(boolean[][] table, int startingRow, int startingColumn, int startingRotation, int endingRow, int endingColumn, int endingRotation) {
+        int[][] edges = constructGraphFromTable(table);
+        double[][] weights = constructWeightsFromGraph(edges);
+        int dimension = table.length;
+        int startingPoint = startingRotation + 4 * (startingColumn + dimension * startingRow);
+        int endingPoint = endingRotation + 4 * (endingColumn + dimension * endingRow);
+        return constructDjikstraRoute(edges.length, edges, weights, startingPoint, endingPoint);
     }
     private void finalizeLoopStage() {
         telemetry.update();
@@ -326,5 +428,20 @@ public class MainAutonomousOpMode extends LinearOpMode {
     private void transform(VuforiaTrackable trackable, float[] values)
     {
         transform(trackable, values[0], values[1], values[2], values[3], values[4], values[5]);
+    }
+    private class DjikstraPriorityQueueItem {
+        public int index;
+        public double distance;
+        public DjikstraPriorityQueueItem(int index, double distance) {
+            this.index = index;
+            this.distance = distance;
+        }
+    }
+    private class DjikstraPriorityQueueComparator implements Comparator<DjikstraPriorityQueueItem> {
+
+        @Override
+        public int compare(DjikstraPriorityQueueItem item1, DjikstraPriorityQueueItem item2) {
+            return Double.compare(item1.distance, item2.distance);
+        }
     }
 }
