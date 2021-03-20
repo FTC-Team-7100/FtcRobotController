@@ -35,7 +35,9 @@ import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
+import com.qualcomm.robotcore.hardware.Gamepad;
 import com.qualcomm.robotcore.hardware.Servo;
+import com.qualcomm.robotcore.hardware.UltrasonicSensor;
 
 import org.firstinspires.ftc.robotcore.external.ClassFactory;
 import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
@@ -72,6 +74,8 @@ public class MainAutonomousOpMode extends LinearOpMode {
     DcMotor motorLB;
     DcMotor motorRF;
     DcMotor motorRB;
+    UltrasonicSensor usSensor;
+    Gamepad gamepad;
     private static final String VUFORIA_KEY = "AX3wJCr/////AAABmXqqKIuTJkMatbvyrDkSphp5h9VYO42DWDiKLucp30xEvP98y9OIRKGNszB+EpBJ4cPqww5PWGd6BPOl7kHDKajvlJClovU1+L4gNxeM0pvROvjulRueLD7JCqzM7yWina4gLO1YTeWIUGqF1v1Qh34137m65frOnjbPcBgQk2O4ky740K3T/SM541xP4ALr3FSvyl2xQD1EBu2xI49XL2bLtsztTuUUUmyS07lvmYNt4kH1+108Bqvca+GYnufjYs8mlDG4qYSF6UhZyGHhjskblJWKaNQT2Lph3JgxMXfcaV40/qkq9C52GVbIk/QLEDRnKq3Ezce13ZM+GK+YItEAYXJ+hUZHTUIbVedF8uZ4";
     private static final float mmPerInch = 25.4f;
     private static final float mmTargetHeight = (6) * mmPerInch;
@@ -80,6 +84,7 @@ public class MainAutonomousOpMode extends LinearOpMode {
     private static final float linearSpeedPerPower = 1.0f;
     private static final float rotationSpeedPerPower = 1.0f;
     private static final float millimetersPerTableRow = 10.0f;
+    private static final float ultrasoundThreshold = 1.0f;
     private VuforiaLocalizer vuforia = null;
     private static final float[][] trackableTransforms = {
             { halfField, quadField, mmTargetHeight, 90, 0, -90 },
@@ -98,6 +103,7 @@ public class MainAutonomousOpMode extends LinearOpMode {
     private static final float CAMERA_FORWARD_DISPLACEMENT  = 4.0f * mmPerInch;
     private static final float CAMERA_VERTICAL_DISPLACEMENT = 8.0f * mmPerInch;
     private static final float CAMERA_LEFT_DISPLACEMENT     = 0;
+    private static boolean isAutoMode = false;
     WebcamName webcamName = null;
     VectorF translation = null;
     Orientation rotation = null;
@@ -111,7 +117,9 @@ public class MainAutonomousOpMode extends LinearOpMode {
         while (shouldContinue()) mainLoop();
     }
     private void mainLoop() {
-        updateLocations();
+        if(isAutoMode) {
+            updateLocations();
+        }
         moveRobot();
         finalizeLoopStage();
     }
@@ -119,12 +127,30 @@ public class MainAutonomousOpMode extends LinearOpMode {
         initializeVuforia();
         initializeTargets();
         initializeMotors();
+        initializeSensors();
         beginMainProgram();
     }
     private void moveRobot() {
-        if(LocalDateTime.now().isAfter(stopTime)) {
-            planMotion();
+        if(isAutoMode) {
+            if(LocalDateTime.now().isAfter(stopTime)) {
+                planMotion();
+            }
         }
+        else {
+            if(gamepad.dpad_up) {
+                moveLinear(1);
+            } else if (gamepad.dpad_down) {
+                moveLinear(1);
+            } else if (gamepad.dpad_left) {
+                rotate(1);
+            } else if (gamepad.dpad_right) {
+                rotate(-1);
+            }
+        }
+    }
+    private void initializeSensors() {
+        usSensor = hardwareMap.get(UltrasonicSensor.class, "Ultrasonic 1");
+        gamepad = hardwareMap.get(Gamepad.class, "Gamepad 1");
     }
     private void planMotion() {
         moveLinear(1);
@@ -149,6 +175,9 @@ public class MainAutonomousOpMode extends LinearOpMode {
             trackable.setName(trackableNames[i]);
             transform(trackable, trackableTransforms[i]);
         }
+    }
+    private boolean checkTooClose() {
+        return usSensor.getUltrasonicLevel() < ultrasoundThreshold;
     }
     private int[] constructDjikstraRoute(int graphSize, int[][] edges, double[][] weights, int start, int end) {
         double[] distances = new double[graphSize];
@@ -262,6 +291,7 @@ public class MainAutonomousOpMode extends LinearOpMode {
         getCameraLocation();
         waitForStart();
         targetsUltimateGoal.activate();
+
     }
     private void initializeMotors() {
         motorLF = hardwareMap.get(DcMotor.class, "lf_drive");
