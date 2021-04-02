@@ -52,9 +52,12 @@ import org.firstinspires.ftc.robotcore.external.navigation.VuforiaTrackables;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
+import java.util.Iterator;
 import java.util.List;
 import java.util.PriorityQueue;
+import java.util.Queue;
 
 import static org.firstinspires.ftc.robotcore.external.navigation.AngleUnit.DEGREES;
 import static org.firstinspires.ftc.robotcore.external.navigation.AxesOrder.XYZ;
@@ -108,6 +111,8 @@ public class MainAutonomousOpMode extends LinearOpMode {
     VectorF translation = null;
     Orientation rotation = null;
     VuforiaTrackables targetsUltimateGoal = null;
+    ArrayList<RobotMoveItem> moveQueue = new ArrayList<RobotMoveItem>();
+    private static final double backupDistance = 200;
     @Override public void runOpMode() {
         initializeProgram();
         runProgram();
@@ -132,28 +137,51 @@ public class MainAutonomousOpMode extends LinearOpMode {
     }
     private void moveRobot() {
         if(isAutoMode) {
-            if(LocalDateTime.now().isAfter(stopTime)) {
+            if(!backupIfNeeded() && LocalDateTime.now().isAfter(stopTime)) {
                 planMotion();
             }
         }
         else {
             if(gamepad.dpad_up) {
-                moveLinear(1);
+                beginLinearMotion(1);
             } else if (gamepad.dpad_down) {
-                moveLinear(1);
+                beginLinearMotion(1);
             } else if (gamepad.dpad_left) {
-                rotate(1);
+                beginRotation(1);
             } else if (gamepad.dpad_right) {
-                rotate(-1);
+                beginRotation(-1);
+            } else {
+                stopRobot();
             }
         }
+    }
+    private void generateMoveQueue() {
+
+    }
+    private void backupRobot() {
+        moveLinear(-backupDistance);
+        stopTime = LocalDateTime.now().minusSeconds(1);
+        moveQueue.clear();
+        generateMoveQueue();
+    }
+    private boolean backupIfNeeded() {
+        if(checkTooClose()) {
+            backupRobot();
+            return true;
+        }
+        return false;
     }
     private void initializeSensors() {
         usSensor = hardwareMap.get(UltrasonicSensor.class, "Ultrasonic 1");
         gamepad = hardwareMap.get(Gamepad.class, "Gamepad 1");
     }
     private void planMotion() {
-        moveLinear(1);
+        if(moveQueue.size() > 0) {
+            actOnMoveItem(moveQueue.get(0));
+            moveQueue.remove(0);
+        } else {
+
+        }
     }
     private boolean shouldContinue() {
         return !isStopRequested() && opModeIsActive();
@@ -277,6 +305,46 @@ public class MainAutonomousOpMode extends LinearOpMode {
         int startingPoint = startingRotation + 4 * (startingColumn + dimension * startingRow);
         int endingPoint = endingRotation + 4 * (endingColumn + dimension * endingRow);
         return constructDjikstraRoute(edges.length, edges, weights, startingPoint, endingPoint);
+    }
+    private ArrayList<RobotMoveItem> constructMovesFromTable(boolean[][] table, int startingRow, int startingColumn, int startingRotation, int endingRow, int endingColumn, int endingRotation) {
+        int[] output = constructRouteFromTable(table, startingRow, startingColumn, startingRotation, endingRow, endingColumn, endingRotation);
+        int columns = table[0].length;
+        int rows = table.length;
+        int[][] trigTable = new int[][] {
+                new int[] { 1, 0 },
+                new int[] { 0, 1 },
+                new int[] { -1, 0 },
+                new int[] { 0, -1 }
+        };
+        ArrayList<RobotMoveItem> result = new ArrayList<>();
+        for(int i = 1; i < output.length; i++) {
+            int start = output[i - 1];
+            int end = output[i];
+            int startRotation = start % 4;
+            int endRotation = end % 4;
+            int startColumn = (start / 4) % columns;
+            int endColumn = (end / 4) % columns;
+            int startRow = start / (4 * columns);
+            int endRow = end / (4 * columns);
+            boolean isRotation = false;
+            double magnitude = 0;
+            if(startRotation == endRotation) {
+                if(startColumn == endColumn) {
+                    magnitude = 10.0 * (endRow - startRow) / trigTable[startRotation][0];
+                } else {
+                    magnitude = 10.0 * (endColumn - startColumn) / trigTable[startRotation][1];
+                }
+            } else {
+                isRotation = true;
+                if(endRotation == startRotation + 1 || (endRotation == 0 && startRotation == 3)) {
+                    magnitude = Math.PI / 2;
+                } else {
+                    magnitude = -Math.PI / 2;
+                }
+            }
+            result.add(new RobotMoveItem(isRotation, magnitude));
+        }
+        return result;
     }
     private void finalizeLoopStage() {
         telemetry.update();
@@ -442,6 +510,13 @@ public class MainAutonomousOpMode extends LinearOpMode {
         telemetry.addData("Visible Target", "none");
         return false;
     }
+    private void actOnMoveItem(RobotMoveItem item) {
+        if(item.isRotation) {
+            rotate(item.magnitude);
+        } else {
+            moveLinear(item.magnitude);
+        }
+    }
     private void shutdownProgram() {
         motorLF.setPower(0);
         motorLB.setPower(0);
@@ -472,6 +547,14 @@ public class MainAutonomousOpMode extends LinearOpMode {
         @Override
         public int compare(DjikstraPriorityQueueItem item1, DjikstraPriorityQueueItem item2) {
             return Double.compare(item1.distance, item2.distance);
+        }
+    }
+    private class RobotMoveItem {
+        public boolean isRotation;
+        public double magnitude;
+        public RobotMoveItem(boolean isRotation, double magnitude) {
+            this.isRotation = isRotation;
+            this.magnitude = magnitude;
         }
     }
 }
