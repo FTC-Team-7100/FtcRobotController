@@ -1,29 +1,23 @@
 package org.firstinspires.ftc.teamcode;
 
+import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
-import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
-import com.qualcomm.robotcore.hardware.Servo;
+import com.qualcomm.robotcore.util.ElapsedTime;
 
-import static org.firstinspires.ftc.robotcore.external.navigation.AngleUnit.DEGREES;
-import static org.firstinspires.ftc.robotcore.external.navigation.AxesOrder.XYZ;
-import static org.firstinspires.ftc.robotcore.external.navigation.AxesOrder.YZX;
-import static org.firstinspires.ftc.robotcore.external.navigation.AxesReference.EXTRINSIC;
-import static org.firstinspires.ftc.robotcore.external.navigation.VuforiaLocalizer.CameraDirection.BACK;
-
-@TeleOp(name="MainTeleopOpMode")
-public class MainTeleOpMode extends LinearOpMode{
+@Autonomous(name="TestMovementAuto")
+public class TestMovementAuto extends LinearOpMode {
     DcMotor motorLF;
     DcMotor motorLB;
     DcMotor motorRF;
     DcMotor motorRB;
     boolean infiniteLoop = false;
-
+    private ElapsedTime runtime = new ElapsedTime();
     @Override public void runOpMode() {
         initializeProgram();
+        waitForStart();
         runProgram();
-
     }
 
 
@@ -33,20 +27,26 @@ public class MainTeleOpMode extends LinearOpMode{
     }
 
     private void runProgram() {
-        while (!infiniteLoop) {
-            if (gamepad1.dpad_up) {
-                moveForward(1);
-            }
-            if (gamepad1.dpad_down) {
-                moveForward(-1);
-            }
-            if (gamepad1.dpad_left){
-                strafe(1);
-            }
-            if (gamepad1.dpad_right){
-                strafe(-1);
-            }
+
+        //lefts are positive, rights are negative
+
+        // Step 1:  Drive forward for 3 seconds
+        motorLB.setPower(.6);
+        motorLF.setPower(.6);
+        motorRB.setPower(-.6);
+        motorRF.setPower(-.6);
+        runtime.reset();
+        while (opModeIsActive() && (runtime.seconds() < 3.0)) {
+            telemetry.addData("Path", "Leg 1: %2.5f S Elapsed", runtime.seconds());
+            telemetry.update();
         }
+
+        //halt, dumbass
+        motorLB.setPower(0);
+        motorLF.setPower(0);
+        motorRB.setPower(0);
+        motorRF.setPower(0);
+
     }
 
     private DcMotor[] getMotors(int frontBack, int rightLeft)
@@ -96,7 +96,7 @@ public class MainTeleOpMode extends LinearOpMode{
         motorRB = hardwareMap.get(DcMotor.class, "rb_drive");
     }
 
-    public void moveForward(double power, double power2){
+    public void moveForward(double power){
         DcMotorSimple.Direction direction = DcMotorSimple.Direction.FORWARD;
         if (power<0) direction = DcMotorSimple.Direction.REVERSE;
         double correctedPower = Math.abs(power);
@@ -132,3 +132,4 @@ public class MainTeleOpMode extends LinearOpMode{
 
     }
 }
+
