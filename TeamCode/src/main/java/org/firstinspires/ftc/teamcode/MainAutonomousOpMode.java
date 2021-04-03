@@ -109,7 +109,6 @@ public class MainAutonomousOpMode extends LinearOpMode {
     private static final float CAMERA_FORWARD_DISPLACEMENT  = 4.0f * mmPerInch;
     private static final float CAMERA_VERTICAL_DISPLACEMENT = 8.0f * mmPerInch;
     private static final float CAMERA_LEFT_DISPLACEMENT     = 0;
-    private static boolean isAutoMode = false;
     WebcamName webcamName = null;
     VectorF translation = null;
     Orientation rotation = null;
@@ -128,9 +127,7 @@ public class MainAutonomousOpMode extends LinearOpMode {
         while (shouldContinue()) mainLoop();
     }
     private void mainLoop() {
-        if(isAutoMode) {
-            updateLocations();
-        }
+        updateLocations();
         moveRobot();
         finalizeLoopStage();
     }
@@ -142,23 +139,8 @@ public class MainAutonomousOpMode extends LinearOpMode {
         beginMainProgram();
     }
     private void moveRobot() {
-        if(isAutoMode) {
-            if(!backupIfNeeded() && LocalDateTime.now().isAfter(stopTime)) {
-                planMotion();
-            }
-        }
-        else {
-            if(gamepad.dpad_up) {
-                beginLinearMotion(1);
-            } else if (gamepad.dpad_down) {
-                beginLinearMotion(1);
-            } else if (gamepad.dpad_left) {
-                beginRotation(1);
-            } else if (gamepad.dpad_right) {
-                beginRotation(-1);
-            } else {
-                stopRobot();
-            }
+        if(!backupIfNeeded() && LocalDateTime.now().isAfter(stopTime)) {
+            planMotion();
         }
     }
     private void generateMoveQueue() {
