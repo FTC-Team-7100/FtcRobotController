@@ -43,6 +43,9 @@ import org.firstinspires.ftc.robotcore.external.ClassFactory;
 import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
 import org.firstinspires.ftc.robotcore.external.matrices.OpenGLMatrix;
 import org.firstinspires.ftc.robotcore.external.matrices.VectorF;
+import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
+import org.firstinspires.ftc.robotcore.external.navigation.AxesOrder;
+import org.firstinspires.ftc.robotcore.external.navigation.AxesReference;
 import org.firstinspires.ftc.robotcore.external.navigation.Orientation;
 import org.firstinspires.ftc.robotcore.external.navigation.VuforiaLocalizer;
 import org.firstinspires.ftc.robotcore.external.navigation.VuforiaTrackable;
@@ -113,6 +116,9 @@ public class MainAutonomousOpMode extends LinearOpMode {
     VuforiaTrackables targetsUltimateGoal = null;
     ArrayList<RobotMoveItem> moveQueue = new ArrayList<RobotMoveItem>();
     private static final double backupDistance = 200;
+    private static double targetX = 0;
+    private static double targetY = 0;
+    private static double targetRotation = 0;
     @Override public void runOpMode() {
         initializeProgram();
         runProgram();
@@ -156,11 +162,34 @@ public class MainAutonomousOpMode extends LinearOpMode {
         }
     }
     private void generateMoveQueue() {
+        ArrayList<RobotMoveItem> initialQueue = constructMovesFromTable(generateTable(), (int)(translation.get(0) / millimetersPerTableRow), (int)(translation.get(1) / millimetersPerTableRow), (int)(rotation.toAxesOrder(XYZ).toAngleUnit(DEGREES).thirdAngle / 90.0), (int)(targetX / millimetersPerTableRow), (int)(targetY / millimetersPerTableRow), (int)(targetRotation / (Math.PI / 2)));
+        initialQueue.add(0, new RobotMoveItem(true, (int)(rotation.toAxesOrder(XYZ).toAngleUnit(DEGREES).thirdAngle / 90.0) * 90.0 - rotation.toAxesOrder(XYZ).toAngleUnit(DEGREES).thirdAngle));
+        initialQueue.add(new RobotMoveItem(true, (int)(targetRotation / (Math.PI / 2)) * (Math.PI / 2) - (int)(targetRotation / (Math.PI / 2))));
+        moveQueue = initialQueue;
+    }
+    private void setTarget() {
 
+    }
+    private boolean[][] generateTable() {
+        double fullField = halfField * 2;
+        int dimension = (int)(fullField / millimetersPerTableRow);
+        boolean[][] outputTable = new boolean[dimension][dimension];
+        int xCounter = 0;
+        int yCounter = 0;
+        for(double xValue = 0; xValue <= fullField; xValue += millimetersPerTableRow) {
+            for(double yValue = 0; yValue <= fullField; yValue += millimetersPerTableRow) {
+                outputTable[xCounter][yCounter] = getTableEntryAtLocation(xValue, yValue);
+                yCounter++;
+            }
+            xCounter++;
+        }
+        return outputTable;
+    }
+    private boolean getTableEntryAtLocation(double xPosition, double yPosition) {
+        return false;
     }
     private void backupRobot() {
         moveLinear(-backupDistance);
-        stopTime = LocalDateTime.now().minusSeconds(1);
         moveQueue.clear();
         generateMoveQueue();
     }
@@ -176,7 +205,7 @@ public class MainAutonomousOpMode extends LinearOpMode {
         gamepad = hardwareMap.get(Gamepad.class, "Gamepad 1");
     }
     private void planMotion() {
-        if(moveQueue.size() > 0) {
+        if(!moveQueue.isEmpty()) {
             actOnMoveItem(moveQueue.get(0));
             moveQueue.remove(0);
         } else {
@@ -274,14 +303,16 @@ public class MainAutonomousOpMode extends LinearOpMode {
         for(int i = 0; i < dimension; i++) {
             for(int j = 0; j < dimension; j++) {
                 for(int k = 0; k < 4; k++) {
+                    if(input[i][j]) continue;
                     int[][] outEdges = new int[][] {
                             new int[] { i, j, (k + 1) % 4 },
                             new int[] { i, j, Math.floorMod(k - 1, 4) },
-                            new int[] { i + trigTable[k][0], j + trigTable[k][1], k },
-                            new int[] { i - trigTable[k][0], j - trigTable[k][1], k }
+                            new int[] { i + trigTable[k][0], j + trigTable[k][1], k }//,
+                            //new int[] { i - trigTable[k][0], j - trigTable[k][1], k }
                     };
                     for(int[] outEdge : outEdges) {
-                        if(i < 0 || i >= dimension || j < 0 || j > dimension) continue;
+                        if(outEdge[0] < 0 || outEdge[0] >= dimension || outEdge[1] < 0 || outEdge[1] > dimension) continue;
+                        if(input[outEdge[0]][outEdge[1]]) continue;
                         int outNode = outEdge[2] + 4 * (outEdge[1] + dimension * outEdge[0]);
                         tempTable.get(k + 4 * (j + dimension * i)).add(outNode);
                     }
