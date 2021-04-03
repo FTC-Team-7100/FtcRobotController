@@ -86,7 +86,9 @@ public class MainAutonomousOpMode extends LinearOpMode {
     private static final float mmPerInch = 25.4f;
     private static final float mmTargetHeight = (6) * mmPerInch;
     private static final float halfField = 72 * mmPerInch;
-    private static final float quadField  = 36 * mmPerInch;
+    private static final float quadField = 36 * mmPerInch;
+    private static final float sixthField = 24 * mmPerInch;
+    private static final float wobbleGoalRadius = 12 * mmPerInch;
     private static final float linearSpeedPerPower = 1.0f;
     private static final float rotationSpeedPerPower = 1.0f;
     private static final float millimetersPerTableRow = 10.0f;
@@ -168,6 +170,17 @@ public class MainAutonomousOpMode extends LinearOpMode {
         return outputTable;
     }
     private boolean getTableEntryAtLocation(double xPosition, double yPosition) {
+        double[][] locations = new double[][] {
+                new double[] { -2 * sixthField, -2 * sixthField },
+                new double[] { -2 * sixthField, -1 * sixthField },
+                new double[] { -2 * sixthField, 2 * sixthField },
+                new double[] { -2 * sixthField, 1 * sixthField }
+        };
+        for(double[] array : locations) {
+            if(Math.sqrt((xPosition - array[0]) * (xPosition - array[0]) + (yPosition - array[1]) * (yPosition - array[1])) < wobbleGoalRadius) {
+                return true;
+            }
+        }
         return false;
     }
     private void backupRobot() {
