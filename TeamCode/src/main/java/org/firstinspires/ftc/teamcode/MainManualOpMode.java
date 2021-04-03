@@ -184,11 +184,6 @@ public class MainManualOpMode extends LinearOpMode {
         }
         return false;
     }
-    private double getPowerFromDistance(double distance) {
-        double power = 1;
-        if(distance < 0) power = -1;
-        return power;
-    }
     private void shutdownProgram() {
         motorLF.setPower(0);
         motorLB.setPower(0);
