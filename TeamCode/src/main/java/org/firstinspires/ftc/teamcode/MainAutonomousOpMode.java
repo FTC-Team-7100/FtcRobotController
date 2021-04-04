@@ -75,7 +75,9 @@ public class MainAutonomousOpMode extends LinearOpMode {
     private static final VuforiaLocalizer.CameraDirection CAMERA_CHOICE = BACK;
     private static final boolean PHONE_IS_PORTRAIT = false;
     private static final int CYCLE_MS = 50;
+    private static final int BACKUP_MS = 500;
     private LocalDateTime stopTime = LocalDateTime.MIN;
+    private LocalDateTime gameEndTime = LocalDateTime.MAX;
     DcMotor motorLF;
     DcMotor motorLB;
     DcMotor motorRF;
@@ -88,7 +90,7 @@ public class MainAutonomousOpMode extends LinearOpMode {
     private static final float halfField = 72 * mmPerInch;
     private static final float quadField = 36 * mmPerInch;
     private static final float sixthField = 24 * mmPerInch;
-    private static final float wobbleGoalRadius = 12 * mmPerInch;
+    private static final float blockerRadius = 12 * mmPerInch;
     private static final float linearSpeedPerPower = 1.0f;
     private static final float rotationSpeedPerPower = 1.0f;
     private static final float millimetersPerTableRow = 10.0f;
@@ -120,6 +122,11 @@ public class MainAutonomousOpMode extends LinearOpMode {
     private static double targetX = 0;
     private static double targetY = 0;
     private static double targetRotation = 0;
+    private static final int gameLength = 30;
+    private static boolean hasRing = false;
+    private static double ringX = -1 * sixthField;
+    private static double ringY = 1 * quadField;
+    private static double teamSign = 0;
     @Override public void runOpMode() {
         initializeProgram();
         runProgram();
@@ -133,7 +140,16 @@ public class MainAutonomousOpMode extends LinearOpMode {
         moveRobot();
         finalizeLoopStage();
     }
+    private void gatherTeamData() {
+        if(teamSign != 0) return;
+        else if(translation.get(1) < 0) {
+            teamSign = -1;
+        } else {
+            teamSign = 1;
+        }
+    }
     private void initializeProgram() {
+        initializeTime();
         initializeVuforia();
         initializeTargets();
         initializeMotors();
@@ -145,6 +161,9 @@ public class MainAutonomousOpMode extends LinearOpMode {
             planMotion();
         }
     }
+    private void initializeTime() {
+        gameEndTime = LocalDateTime.now().plusSeconds(gameLength);
+    }
     private void generateMoveQueue() {
         ArrayList<RobotMoveItem> initialQueue = constructMovesFromTable(generateTable(), (int)(translation.get(0) / millimetersPerTableRow), (int)(translation.get(1) / millimetersPerTableRow), (int)(rotation.toAxesOrder(XYZ).toAngleUnit(DEGREES).thirdAngle / 90.0), (int)(targetX / millimetersPerTableRow), (int)(targetY / millimetersPerTableRow), (int)(targetRotation / (Math.PI / 2)));
         initialQueue.add(0, new RobotMoveItem(true, (int)(rotation.toAxesOrder(XYZ).toAngleUnit(DEGREES).thirdAngle / 90.0) * 90.0 - rotation.toAxesOrder(XYZ).toAngleUnit(DEGREES).thirdAngle));
@@ -152,6 +171,28 @@ public class MainAutonomousOpMode extends LinearOpMode {
         moveQueue = initialQueue;
     }
     private void setTarget() {
+        if(hasRing) {
+            targetX = -sixthField;
+            targetY = 0;
+            targetRotation = 0;
+        } else {
+            targetX = ringX - blockerRadius;
+            targetY = ringY * teamSign;
+            targetRotation = 0;
+        }
+    }
+    private void performResponse() {
+        if (hasRing) {
+            launchRing();
+        } else {
+            pickUpRing();
+        }
+        hasRing = !hasRing;
+    }
+    private void pickUpRing() {
+
+    }
+    private void launchRing() {
 
     }
     private boolean[][] generateTable() {
@@ -174,17 +215,21 @@ public class MainAutonomousOpMode extends LinearOpMode {
                 new double[] { -2 * sixthField, -2 * sixthField },
                 new double[] { -2 * sixthField, -1 * sixthField },
                 new double[] { -2 * sixthField, 2 * sixthField },
-                new double[] { -2 * sixthField, 1 * sixthField }
+                new double[] { -2 * sixthField, 1 * sixthField },
+                new double[] { -1 * sixthField, 1 * quadField },
+                new double[] { -1 * sixthField, -1 * quadField }
         };
         for(double[] array : locations) {
-            if(Math.sqrt((xPosition - array[0]) * (xPosition - array[0]) + (yPosition - array[1]) * (yPosition - array[1])) < wobbleGoalRadius) {
+            if(Math.sqrt((xPosition - array[0]) * (xPosition - array[0]) + (yPosition - array[1]) * (yPosition - array[1])) < blockerRadius) {
                 return true;
             }
         }
         return false;
     }
     private void backupRobot() {
-        moveLinear(-backupDistance);
+        beginLinearMotion(-1);
+        sleep(BACKUP_MS);
+        stopRobot();
         moveQueue.clear();
         generateMoveQueue();
     }
@@ -204,7 +249,9 @@ public class MainAutonomousOpMode extends LinearOpMode {
             actOnMoveItem(moveQueue.get(0));
             moveQueue.remove(0);
         } else {
-
+            performResponse();
+            setTarget();
+            generateMoveQueue();
         }
     }
     private boolean shouldContinue() {
@@ -379,13 +426,14 @@ public class MainAutonomousOpMode extends LinearOpMode {
     }
     private boolean updateLocations() {
         getCameraLocation();
-        return getRobotLocation();
+        boolean result = getRobotLocation();
+        gatherTeamData();
+        return result;
     }
     private void beginMainProgram() {
         getCameraLocation();
         waitForStart();
         targetsUltimateGoal.activate();
-
     }
     private void initializeMotors() {
         motorLF = hardwareMap.get(DcMotor.class, "lf_drive");
