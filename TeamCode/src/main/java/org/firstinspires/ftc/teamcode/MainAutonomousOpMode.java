@@ -141,6 +141,7 @@ public class MainAutonomousOpMode extends LinearOpMode {
         finalizeLoopStage();
     }
     private void gatherTeamData() {
+        // Determines which team the robot is on
         if(teamSign != 0) return;
         else if(translation.get(1) < 0) {
             teamSign = -1;
@@ -231,9 +232,11 @@ public class MainAutonomousOpMode extends LinearOpMode {
         sleep(BACKUP_MS);
         stopRobot();
         moveQueue.clear();
+        updateLocations();
         generateMoveQueue();
     }
     private boolean backupIfNeeded() {
+        // Determines whether the robot is in danger of collision, and, if so, backs away
         if(checkTooClose()) {
             backupRobot();
             return true;
@@ -245,6 +248,7 @@ public class MainAutonomousOpMode extends LinearOpMode {
         gamepad = hardwareMap.get(Gamepad.class, "Gamepad 1");
     }
     private void planMotion() {
+        // Follows (or generates) a movement pathway
         if(!moveQueue.isEmpty()) {
             actOnMoveItem(moveQueue.get(0));
             moveQueue.remove(0);
@@ -279,6 +283,7 @@ public class MainAutonomousOpMode extends LinearOpMode {
         return usSensor.getUltrasonicLevel() < ultrasoundThreshold;
     }
     private int[] constructDjikstraRoute(int graphSize, int[][] edges, double[][] weights, int start, int end) {
+        // Uses Djikstra's algorithm to generate a movement pathway from a directed state-space graph of arena positions and rotation states
         double[] distances = new double[graphSize];
         int[] routeFrom = new int[graphSize];
         for(int i = 0; i < graphSize; i++) {
@@ -312,6 +317,7 @@ public class MainAutonomousOpMode extends LinearOpMode {
         return finalOutput;
     }
     private double[][] constructWeightsFromGraph(int[][] input) {
+        // Determines graph weights for Djikstra's algorithm
         int arraySize = input.length;
         int area = arraySize / 4;
         int dimension = (int)Math.round(Math.sqrt(area));
@@ -330,6 +336,7 @@ public class MainAutonomousOpMode extends LinearOpMode {
         return output;
     }
     private int[][] constructGraphFromTable(boolean[][] input) {
+        // Converts a table of available and blocked locations into a graph
         int[][] trigTable = new int[][] {
                 new int[] { 1, 0 },
                 new int[] { 0, 1 },
@@ -372,6 +379,7 @@ public class MainAutonomousOpMode extends LinearOpMode {
         return finalTable;
     }
     private int[] constructRouteFromTable(boolean[][] table, int startingRow, int startingColumn, int startingRotation, int endingRow, int endingColumn, int endingRotation) {
+        // Creates a pathway from an input table
         int[][] edges = constructGraphFromTable(table);
         double[][] weights = constructWeightsFromGraph(edges);
         int dimension = table.length;
@@ -380,6 +388,7 @@ public class MainAutonomousOpMode extends LinearOpMode {
         return constructDjikstraRoute(edges.length, edges, weights, startingPoint, endingPoint);
     }
     private ArrayList<RobotMoveItem> constructMovesFromTable(boolean[][] table, int startingRow, int startingColumn, int startingRotation, int endingRow, int endingColumn, int endingRotation) {
+        // Runs constructRouteFromTable and converts the resulting graph pathway into a sequence of moves
         int[] output = constructRouteFromTable(table, startingRow, startingColumn, startingRotation, endingRow, endingColumn, endingRotation);
         int columns = table[0].length;
         int rows = table.length;
@@ -481,6 +490,7 @@ public class MainAutonomousOpMode extends LinearOpMode {
         return returnArray[frontBack + 1][rightLeft + 1];
     }
     private void setMotors(int frontBack, int rightLeft, double amount) {
+        // Sets the power level of the four wheel motors
         boolean isPositive = amount >= 0;
         DcMotorSimple.Direction direction = DcMotorSimple.Direction.FORWARD;
         if(!isPositive) direction = DcMotorSimple.Direction.REVERSE;
@@ -492,9 +502,11 @@ public class MainAutonomousOpMode extends LinearOpMode {
         }
     }
     private void beginLinearMotion(double power) {
+        // Sets the power level of the wheel motors such that the robot moves forwards or backwards
         setMotors(0, 0, power);
     }
     private void beginRotation(double power) {
+        // Sets the power level of the wheel motors such that the robot turns to the left or right
         setMotors(0, 1, power);
         setMotors(0, -1, -power);
     }
@@ -512,9 +524,11 @@ public class MainAutonomousOpMode extends LinearOpMode {
         setStopTime(power, radians, rotationSpeedPerPower);
     }
     private void moveLinear(double millimeters) {
+        // Main function for linear motion
         if(!stopIfZero(millimeters)) moveLinearInternal(getPowerFromDistance(millimeters), millimeters);
     }
     private void rotate(double radians) {
+        // Main function for rotation
         if(!stopIfZero(radians)) rotateInternal(getPowerFromDistance(radians), radians);
     }
     private boolean stopIfZero(double distance) {
@@ -530,10 +544,12 @@ public class MainAutonomousOpMode extends LinearOpMode {
         return power;
     }
     private void setStopTime(double power, double distance, double speedPerPower) {
+        // Calculates how long the motors must be activated in order to move/rotate by a specified amount
         double seconds = Math.abs(distance / (speedPerPower * power));
         stopTime = LocalDateTime.now().plusNanos((long)(seconds * 1000000000.0));
     }
     private void getCameraLocation() {
+        // Calculates and processes the location of the camera relative to the robot
         float phoneYRotate = 0;
         float phoneXRotate = 0;
         float phoneZRotate = 0;
@@ -553,6 +569,7 @@ public class MainAutonomousOpMode extends LinearOpMode {
         }
     }
     private boolean getRobotLocation() {
+        // Determines the robot location based on Vuforia data
         ArrayList<OpenGLMatrix> allVisible = new ArrayList<OpenGLMatrix>();
         for (VuforiaTrackable trackable : allTrackables) {
             if (((VuforiaTrackableDefaultListener)trackable.getListener()).isVisible()) {
@@ -592,6 +609,7 @@ public class MainAutonomousOpMode extends LinearOpMode {
         }
     }
     private void shutdownProgram() {
+        // Stops the robot and shuts down the program
         motorLF.setPower(0);
         motorLB.setPower(0);
         motorRF.setPower(0);
