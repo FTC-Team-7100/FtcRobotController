@@ -28,24 +28,44 @@ public class MainTeleOpMode extends LinearOpMode{
 
     private void initializeProgram(){
         initializeMotors();
+        waitForStart();
         runProgram();
     }
 
     private void runProgram() {
-        while (!infiniteLoop) {
-            if (gamepad1.dpad_up) {
-                moveForward(1);
+        while (opModeIsActive()) {
+            double drive = gamepad1.left_stick_y;
+            double strafe = -gamepad1.left_stick_x;
+            double rotation = -gamepad1.right_stick_x;
+
+            double[] speeds = {
+                    drive + strafe + rotation, //FL
+                    drive - strafe - rotation, //FR
+                    drive - strafe + rotation, //BL
+                    drive + strafe - rotation, //BR
+            };
+
+            double max = 0;
+            for(double speed:speeds) {
+                if (max < Math.abs(speed) ) {
+                    max = Math.abs(speed);
+                }
             }
-            if (gamepad1.dpad_down) {
-                moveForward(-1);
+
+
+
+            if (max > 1) {
+                for(int i = 0; i < speeds.length; i++) {
+                    speeds[i] /= max;
+                }
             }
-            if (gamepad1.dpad_left){
-                strafe(1);
-            }
-            if (gamepad1.dpad_right){
-                strafe(-1);
-            }
+
+            motorLF.setPower(speeds[0]);
+            motorRF.setPower(speeds[1]);
+            motorLB.setPower(speeds[2]);
+            motorRB.setPower(speeds[3]);
         }
+
     }
 
     private DcMotor[] getMotors(int frontBack, int rightLeft)
@@ -93,6 +113,8 @@ public class MainTeleOpMode extends LinearOpMode{
         motorLB = hardwareMap.get(DcMotor.class, "lb_drive");
         motorRF = hardwareMap.get(DcMotor.class, "rf_drive");
         motorRB = hardwareMap.get(DcMotor.class, "rb_drive");
+        motorLF.setDirection(DcMotor.Direction.REVERSE);
+        motorLB.setDirection(DcMotor.Direction.REVERSE);
     }
 
     public void moveForward(double power, double power2){
