@@ -5,6 +5,7 @@ import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.Servo;
+import com.qualcomm.robotcore.util.ElapsedTime;
 
 import static org.firstinspires.ftc.robotcore.external.navigation.AngleUnit.DEGREES;
 import static org.firstinspires.ftc.robotcore.external.navigation.AxesOrder.XYZ;
@@ -18,6 +19,16 @@ public class MainTeleOpMode extends LinearOpMode{
     DcMotor motorLB;
     DcMotor motorRF;
     DcMotor motorRB;
+    DcMotor intake;
+    DcMotor launch;
+
+    Servo loader;
+    double servoPosition;
+    static final double MAX_POSITION  = 0; //TODO: SET
+    static final double MIN_POSITION = 1; //TODO: SET
+
+    private ElapsedTime runtime = new ElapsedTime();
+    private ElapsedTime loadDelay = new ElapsedTime();
     boolean infiniteLoop = false;
 
     @Override public void runOpMode() {
@@ -34,6 +45,8 @@ public class MainTeleOpMode extends LinearOpMode{
 
     private void runProgram() {
         while (opModeIsActive()) {
+
+            //drive strafe rotation
             double drive = gamepad1.left_stick_y;
             double strafe = -gamepad1.left_stick_x;
             double rotation = -gamepad1.right_stick_x;
@@ -60,12 +73,37 @@ public class MainTeleOpMode extends LinearOpMode{
                 }
             }
 
+
+
+            if (gamepad1.x) intake.setPower(1);
+            else intake.setPower(0);
+
+            /*if (gamepad1.y){
+                loadDelay.reset();
+                servoPosition = 0.5;
+                if (loadDelay.seconds() < 1.0) {
+                    servoPosition += 0.01;
+                } else if (loadDelay.seconds() < 2.0) {
+                    servoPosition -= 0.01;
+                }
+                loader.setPosition(servoPosition);
+            }*/
+            if(gamepad1.y) {
+                servoPosition += 0.01;
+            } else if(gamepad1.b) servoPosition -= 0.01;
+            if (gamepad1.right_bumper) launch.setPower(1);
+            else launch.setPower(0);
+
+            telemetry.addData("servo", "%.5f", loader.getPosition());
+
+            //this is the bottom of the code, don't write new code below this point
             motorLF.setPower(speeds[0]);
             motorRF.setPower(speeds[1]);
             motorLB.setPower(speeds[2]);
             motorRB.setPower(speeds[3]);
+            loader.setPosition(servoPosition);
+            telemetry.update();
         }
-
     }
 
     private DcMotor[] getMotors(int frontBack, int rightLeft)
@@ -113,8 +151,13 @@ public class MainTeleOpMode extends LinearOpMode{
         motorLB = hardwareMap.get(DcMotor.class, "lb_drive");
         motorRF = hardwareMap.get(DcMotor.class, "rf_drive");
         motorRB = hardwareMap.get(DcMotor.class, "rb_drive");
+        intake = hardwareMap.get(DcMotor.class, "intake");
+        loader = hardwareMap.get(Servo.class, "loader");
+        launch = hardwareMap.get(DcMotor.class, "launch");
         motorLF.setDirection(DcMotor.Direction.REVERSE);
         motorLB.setDirection(DcMotor.Direction.REVERSE);
+
+        servoPosition = loader.getPosition(); //TODO: change this to a consistent number
     }
 
     public void moveForward(double power, double power2){
