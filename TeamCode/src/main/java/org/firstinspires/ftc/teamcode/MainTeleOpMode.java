@@ -20,7 +20,7 @@ public class MainTeleOpMode extends LinearOpMode{
     DcMotor motorRF;
     DcMotor motorRB;
     DcMotor intake;
-    DcMotor launch;
+    //DcMotor launch;
 
     Servo loader;
     double servoPosition;
@@ -91,8 +91,8 @@ public class MainTeleOpMode extends LinearOpMode{
             if(gamepad1.y) {
                 servoPosition += 0.01;
             } else if(gamepad1.b) servoPosition -= 0.01;
-            if (gamepad1.right_bumper) launch.setPower(1);
-            else launch.setPower(0);
+            /*if (gamepad1.right_bumper) launch.setPower(1);
+            else launch.setPower(0);*/
 
             telemetry.addData("servo", "%.5f", loader.getPosition());
 
@@ -153,7 +153,7 @@ public class MainTeleOpMode extends LinearOpMode{
         motorRB = hardwareMap.get(DcMotor.class, "rb_drive");
         intake = hardwareMap.get(DcMotor.class, "intake");
         loader = hardwareMap.get(Servo.class, "loader");
-        launch = hardwareMap.get(DcMotor.class, "launch");
+        //launch = hardwareMap.get(DcMotor.class, "launch");
         motorLF.setDirection(DcMotor.Direction.REVERSE);
         motorLB.setDirection(DcMotor.Direction.REVERSE);
 
