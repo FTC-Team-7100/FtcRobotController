@@ -58,10 +58,10 @@ public class badAuto extends LinearOpMode {
     void driveTicks(double speed, int forwardTicks, int horizontalTicks) {
 
         int[] targets = {
-                forwardTicks + horizontalTicks, //lfh
-                forwardTicks - horizontalTicks, //lb
-                forwardTicks - horizontalTicks, //rf
-                forwardTicks + horizontalTicks, //rb
+                motorLF.getCurrentPosition() + forwardTicks + horizontalTicks, //lf
+                motorLB.getCurrentPosition() + forwardTicks - horizontalTicks, //lb
+                motorRF.getCurrentPosition() + forwardTicks - horizontalTicks, //rf
+                motorRB.getCurrentPosition() + forwardTicks + horizontalTicks, //rb
         };
 
         double[] speeds = new double[4];
@@ -73,18 +73,21 @@ public class badAuto extends LinearOpMode {
                 maxTarget = Math.abs(targets[i]);
             }
         }
+        telemetry.addData("max", maxTarget);
+        telemetry.update();
 
         for(int i = 0; i < motors.length; i++) {
             speeds[i] = ((double) targets[i] / maxTarget) * speed; //the fastest wheel should be going at the speed "speed"
         }
-
+        telemetry.addData("speed0", speeds[0]);
         for(int i = 0; i < motors.length; i++) {
             motors[i].setTargetPosition(targets[i]);
             motors[i].setMode(DcMotor.RunMode.RUN_TO_POSITION);
             motors[i].setPower(speeds[i]);
         }
 
-        while(opModeIsActive() && (motors[0].isBusy() || motors[1].isBusy() || motors[2].isBusy() || motors[3].isBusy())) { //wait for stuff to done
+        while(opModeIsActive() && (motors[0].isBusy() || motors[1].isBusy() || motors[2].isBusy() || motors[3].isBusy())) {
+            telemetry.addData("pos0", motors[0].getCurrentPosition());//wait for stuff to done
         }
 
         for(DcMotor motor: motors) {

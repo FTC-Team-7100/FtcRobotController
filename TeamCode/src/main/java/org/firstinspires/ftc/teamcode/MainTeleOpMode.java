@@ -147,6 +147,12 @@ public class MainTeleOpMode extends LinearOpMode{
         motorLF.setDirection(DcMotor.Direction.REVERSE);
         motorLB.setDirection(DcMotor.Direction.REVERSE);
         launch.setDirection(DcMotor.Direction.REVERSE);
+        motorLF.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        motorLB.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        motorRF.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        motorRB.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+
+
 
         servoPosition = .55; //TODO: change this to a consistent number
     }
