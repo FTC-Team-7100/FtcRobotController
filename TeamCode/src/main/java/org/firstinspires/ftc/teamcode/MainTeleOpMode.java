@@ -3,6 +3,7 @@ package org.firstinspires.ftc.teamcode;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
+import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
@@ -13,7 +14,7 @@ public class MainTeleOpMode extends LinearOpMode{
     DcMotor motorRF;
     DcMotor motorRB;
     DcMotor intake;
-    //DcMotor launch;
+    DcMotor launch;
 
     Servo loader;
     double servoPosition;
@@ -71,16 +72,6 @@ public class MainTeleOpMode extends LinearOpMode{
             if (gamepad1.x) intake.setPower(0.58);
             else intake.setPower(0);
 
-            /*if (gamepad1.y){
-                loadDelay.reset();
-                servoPosition = 0.5;
-                if (loadDelay.seconds() < 1.0) {
-                    servoPosition += 0.01;
-                } else if (loadDelay.seconds() < 2.0) {
-                    servoPosition -= 0.01;
-                }
-
-            }*/
             if(gamepad1.y) {
                 servoPosition += 0.001;
                 loader.setPosition(servoPosition);
@@ -89,8 +80,8 @@ public class MainTeleOpMode extends LinearOpMode{
                  servoPosition -= 0.001;
                 loader.setPosition(servoPosition);
             }
-            /*if (gamepad1.right_bumper) launch.setPower(1);
-            else launch.setPower(0);*/
+            if (gamepad1.right_trigger == 1) launch.setPower(1);
+            else launch.setPower(0);
 
 
             telemetry.addData("servo", "%.5f", loader.getPosition());
@@ -152,46 +143,11 @@ public class MainTeleOpMode extends LinearOpMode{
         motorRB = hardwareMap.get(DcMotor.class, "rb_drive");
         intake = hardwareMap.get(DcMotor.class, "intake");
         loader = hardwareMap.get(Servo.class, "loader");
-        //launch = hardwareMap.get(DcMotor.class, "launch");
+        launch = hardwareMap.get(DcMotor.class, "launch");
         motorLF.setDirection(DcMotor.Direction.REVERSE);
         motorLB.setDirection(DcMotor.Direction.REVERSE);
+        launch.setDirection(DcMotor.Direction.REVERSE);
 
         servoPosition = .5; //TODO: change this to a consistent number
     }
-
-    /*public void moveForward(double power, double power2){
-        DcMotorSimple.Direction direction = DcMotorSimple.Direction.FORWARD;
-        if (power<0) direction = DcMotorSimple.Direction.REVERSE;
-        double correctedPower = Math.abs(power);
-        motorLF.setDirection(direction);
-        motorLB.setDirection(direction);
-        motorRF.setDirection(direction);
-        motorRB.setDirection(direction);
-
-        motorLB.setPower(correctedPower);
-        motorLF.setPower(correctedPower);
-        motorRB.setPower(correctedPower);
-        motorRF.setPower(correctedPower);
-    }*/
-
-    /*public void strafe(double power){
-        DcMotorSimple.Direction direction1 = DcMotorSimple.Direction.FORWARD;
-        DcMotorSimple.Direction direction2 = DcMotorSimple.Direction.REVERSE;
-        if (power<0) {
-            direction1 = DcMotorSimple.Direction.REVERSE;
-            direction2 = DcMotorSimple.Direction.FORWARD;
-        }
-        double correctedPower = Math.abs(power);
-        motorLF.setDirection(direction2);
-        motorLB.setDirection(direction1);
-        motorRF.setDirection(direction1);
-        motorRB.setDirection(direction2);
-
-        motorLB.setPower(correctedPower);
-        motorLF.setPower(correctedPower);
-        motorRB.setPower(correctedPower);
-        motorRF.setPower(correctedPower);
-
-
-    }*/
 }
