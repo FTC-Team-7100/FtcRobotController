@@ -73,11 +73,11 @@ public class MainTeleOpMode extends LinearOpMode{
             else intake.setPower(0);
 
             if(gamepad1.y) {
-                servoPosition += 0.001;
+                servoPosition = 0.8;
                 loader.setPosition(servoPosition);
             }
-             else if(gamepad1.b) {
-                 servoPosition -= 0.001;
+             else {
+                 servoPosition = 0.55;
                 loader.setPosition(servoPosition);
             }
             if (gamepad1.right_trigger == 1) launch.setPower(1);
@@ -148,6 +148,6 @@ public class MainTeleOpMode extends LinearOpMode{
         motorLB.setDirection(DcMotor.Direction.REVERSE);
         launch.setDirection(DcMotor.Direction.REVERSE);
 
-        servoPosition = .5; //TODO: change this to a consistent number
+        servoPosition = .55; //TODO: change this to a consistent number
     }
 }
