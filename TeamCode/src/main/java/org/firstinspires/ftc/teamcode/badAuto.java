@@ -8,7 +8,7 @@ import com.qualcomm.robotcore.util.ElapsedTime;
 
 @Autonomous(name = "bad auto")
 public class badAuto extends LinearOpMode {
-    //motoooooooorrrrrrrs
+    //motors
     DcMotor motorLF;
     DcMotor motorLB;
     DcMotor motorRF;
